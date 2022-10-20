@@ -39,6 +39,8 @@ create table accesos_p(
     foreign key (Id_lugar) references lugares_p(Id_lugar),
     foreign key (Id_persona) references personas_p(Id_persona) on delete cascade
 );
+
+-- creamos el registro de estudiante, el registro depende de hacer primero un registro en personas
 delimiter //
 create or replace procedure crear_estudiante(No_control varchar(50), Id_carrera varchar(50), Nombre varchar(50), Apellido_paterno varchar(50), Apellido_materno varchar(50))
 begin
@@ -132,25 +134,77 @@ begin
 end //
 delimiter ;
 
+-- registrar o hacer una entrada o salida automatica
+delimiter //
+create or replace procedure registro_accion_automatica(Id_lugar varchar(60), No_control varchar(50), Id_carrera varchar(50), Nombre varchar(50), Apellido_paterno varchar(50), Apellido_materno varchar(50))
+begin
+    -- creamos la variable null y si no es null no creamos un nuevo usuario
+    set @Id_persona=NULL;
+    select Id_persona into @Id_persona from estudiantes_p where estudiantes_p.No_control=No_control;
+    if @Id_persona is null then
+        call crear_estudiante(No_control, Id_carrera, Nombre, Apellido_paterno, Apellido_materno);
+        call encontrar_id_persona(No_control, @Id_persona);
+        call accion_automatica(@Id_persona, Id_lugar);
+        call ultimo_acceso(No_control);
+    else
+        call accion_automatica(@Id_persona, Id_lugar);
+        call ultimo_acceso(No_control);
+    end if;
+end //
+delimiter ;
 
 
+-- procedimientos select
+delimiter //
+create or replace procedure mostrar_accesos()
+begin
+   select No_control, Hora_entrada, Hora_salida, Nombre, Fecha, Id_acceso from accesos_p inner join personas_p using (Id_persona) inner join estudiantes_p using(Id_persona) where Fecha=curdate();
+end //
+delimiter ;
+delimiter //
+create or replace procedure mostrar_personas()
+begin
+   select No_control, Nombre, Id_persona from personas_p inner join estudiantes_p using(Id_persona);
+end //
+delimiter ;
+delimiter //
+create or replace procedure mostrar_lugares()
+begin
+   select * from lugares_p;
+end //
+delimiter ;
+
+delimiter //
+create or replace procedure encontrar_id_persona(No_control varchar(30), out Id_persona bigint)
+begin
+   select estudiantes_p.Id_persona into Id_persona  from estudiantes_p where estudiantes_p.No_control=No_control;
+end //
+delimiter ;
+
+delimiter //
+create or replace procedure ultimo_acceso(No_control varchar(30))
+begin
+   select Id_acceso, Id_persona, Nombre, No_control, Hora_entrada, Hora_salida from accesos_p inner join estudiantes_p using(Id_persona) inner join personas_p using(Id_persona) where estudiantes_p.No_control=No_control and Fecha=curdate() order by Id_acceso desc limit 1;
+end //
+delimiter ;
+-- fin procedimientos select
+
+-- inserciones necesarias para el funcionamiento del sistema
 
 insert into teclas_p values('A'),('S'),('D'),('F'),('G'), ('Q'), ('W'), ('E');
 insert into Acciones_p values("Automático", "Q"), ("Entrada", "w"), ("Salida", "E");
 insert into lugares_p values("Laboratorio de sistemas", 'A'),("Laboratorio de redes", 'S'), ("Laboratorio de informatica", 'D');
 insert into carreras_p values("Ingeniería en sistemas computacionales"), ("Informática"), ("Ingeniería industrial");
 
+--fin de incerciones necesarias
+
+-- call de prueba, no son necesarios se pueden borrar, no correr
+
 call crear_estudiante("17670174", "Ingeniería en sistemas computacionales", "Gerson", "Visoso", "Ocampo");
 call registrar_entrada("Laboratorio de redes", "111111111", "Ingeniería en sistemas computacionales", "Josue díaz", "", "");
 
 call accion_automatica(4, "Laboratorio de sistemas");
 
+(Id_lugar varchar(60), No_control varchar(50), Id_carrera varchar(50), Nombre varchar(50), Apellido_paterno varchar(50), Apellido_materno varchar(50))
+call registro_accion_automatica("Laboratorio de sistemas", "13011999", "Ingeniería en sistemas computacionales", "nuevo dato agregado", "", "");
 
-
-
-
-call buscar_id_persona("17670174", @Id_persona);
-;
-select @Id_persona;
-; 
-     select Id_encontrado;

@@ -16,3 +16,9 @@ select No_control, Hora_entrada, Hora_salida, Nombre, Fecha from accesos_p inner
     4 | German castro        |
 |   5 | Gerson Visoso Ocampo |
 |   6 | Josue díaz     
+
++----------------------------------------+
+| Informática                            |
+| Ingeniería en sistemas computacionales |
+| Ingeniería industrial                  |
++----------------------------------------+
