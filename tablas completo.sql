@@ -96,12 +96,33 @@ delimiter ;
 
 
 -- procedure correcto
+-- registra la hora de salida
 delimiter //
 create or replace procedure salida(Id_persona_var bigint)
 begin
         update accesos_p set Hora_salida=now() where accesos_p.Id_persona=Id_persona_var and Fecha=curdate();
 end //
 delimiter ;
+
+delimiter //
+create or replace procedure registrar_salida(No_control varchar(30))
+begin
+    set @Id_persona=NULL;
+    call encontrar_id_persona(No_control, @Id_persona);
+    if (select count(*) from accesos_p where Id_persona=@Id_persona and Fecha=curdate() and Hora_salida is null)>0 then
+        call salida(@Id_persona);
+        call mensaje_api("Se registro salida correctamente", "true", "update");
+        call ultimo_acceso(No_control);
+    else
+        call mensaje_api("Debe registrar primero una entrada", "false", "noprocedio");
+    end if;
+end //
+delimiter ;
+;
+
+
+-- registrar salida si tenemos el no_control
+
 
 -- registrar entrada de una persona
 delimiter //
@@ -184,9 +205,27 @@ delimiter ;
 delimiter //
 create or replace procedure ultimo_acceso(No_control varchar(30))
 begin
-   select Id_acceso, Id_persona, Nombre, No_control, Hora_entrada, Hora_salida from accesos_p inner join estudiantes_p using(Id_persona) inner join personas_p using(Id_persona) where estudiantes_p.No_control=No_control and Fecha=curdate() order by Id_acceso desc limit 1;
+   select Id_acceso, Id_persona, Nombre, No_control, Hora_entrada, Hora_salida, Id_lugar from accesos_p inner join estudiantes_p using(Id_persona) inner join personas_p using(Id_persona) where estudiantes_p.No_control=No_control and Fecha=curdate() order by Id_acceso desc limit 1;
 end //
 delimiter ;
+
+delimiter //
+create or replace procedure sin_salida()
+begin
+   select "Personas sin salida" as mensaje, "true" as solicitud, "select" as tipo;
+   select * from accesos_p inner join personas_p using(Id_persona) inner join estudiantes_p using(Id_persona) where Fecha=curdate() and Hora_salida is null order by Id_acceso desc;
+end //
+delimiter ;
+-- fin procedimientos select
+-- respuestas para api
+-- cambiar la forma de presentar los datos
+delimiter //
+create or replace procedure mensaje_api(msg varchar(100), soli varchar(10), tip varchar(40))
+begin
+ select msg as mensaje, soli as solicitud, tip as tipo;
+end //
+delimiter ;
+
 -- fin procedimientos select
 
 -- inserciones necesarias para el funcionamiento del sistema
