@@ -2,28 +2,36 @@ create table personas_p(
     Id_persona bigint primary key auto_increment,
     Nombre varchar(60),
     Apellido_paterno varchar(30),
-    Apellido_materno varchar(30)
+    Apellido_materno varchar(30),
+    fulltext key(Nombre,  Apellido_paterno, Apellido_materno)
 );
+-- ejecutar sentencia
+alter table personas_p add fulltext(nombre);
 create table carreras_p(
-    Id_carrera varchar(50) primary key
+    Id_carrera varchar(50) primary key,
+    Color varchar(25)
+  
 );
 create table estudiantes_p(
-    No_control bigint primary key,
+    No_control varchar(10) primary  key,
     Id_persona bigint not null unique,
     Id_carrera varchar(50) not null,
+    nombre_f varchar(60)
     foreign key (Id_persona) references personas_p(Id_persona) on delete cascade,
-    foreign key (Id_carrera) references carreras_p(Id_carrera) 
+    foreign key (Id_carrera) references carreras_p(Id_carrera),
+    fulltext (No_control, Id_carrera)
 );
+
 create table teclas_p(
     Id_tecla varchar(1) primary key
 );
 create table lugares_p(
-    Id_lugar varchar(30) primary key,
+    Id_lugar varchar(80) primary key,
     Id_tecla varchar(1) not null,
     foreign key (Id_tecla) references teclas_p(Id_tecla)
 );
 
-create table Acciones_p(
+create table acciones_p(
     accion varchar(30) primary key,
     Id_tecla varchar(1) not null,
     foreign key (Id_tecla) references teclas_p(Id_tecla)
@@ -31,7 +39,7 @@ create table Acciones_p(
 
 create table accesos_p(
     Id_acceso bigint primary key auto_increment,
-    Id_lugar varchar(30) not null,
+    Id_lugar varchar(80) not null,
     Id_persona bigint not null,
     Fecha date not null default curdate(),
     Hora_entrada time not null default now(),
@@ -230,10 +238,17 @@ delimiter ;
 
 -- inserciones necesarias para el funcionamiento del sistema
 
-insert into teclas_p values('A'),('S'),('D'),('F'),('G'), ('Q'), ('W'), ('E');
-insert into Acciones_p values("Automático", "Q"), ("Entrada", "w"), ("Salida", "E");
-insert into lugares_p values("Laboratorio de sistemas", 'A'),("Laboratorio de redes", 'S'), ("Laboratorio de informatica", 'D');
-insert into carreras_p values("Ingeniería en sistemas computacionales"), ("Informática"), ("Ingeniería industrial");
+insert into teclas_p values('G'),('R'),('S'),('O'),('N'), ('T'), ('I'), ('L'), ('Y'), ('C'), ('F');
+insert into Acciones_p values("Automático", "G"), ("Entrada", "R"), ("Salida", "S");
+insert into lugares_p values("Laboratorio de sistemas", 'O'),
+("Laboratorio de Aplicaciones", 'N'),
+("Laboratorio de Sistemas Embebidos", 'T'),
+("Laboratorio de Redes", 'I'),
+("Laboratorio de Programación", 'L'),
+("Laboratorio de Electrónica", 'Y'),
+("Laboratorio de Telecomunicaciones", 'C'),
+("Laboratorio de Diseño", 'F');
+insert into carreras_p values("Ingeniería en sistemas computacionales", "rgb(67, 153, 255)"), ("Informática", "rgb(7, 224, 125)"), ("Ingeniería industrial", "rgb(154, 247, 5)");
 
 --fin de incerciones necesarias
 
@@ -247,3 +262,9 @@ call accion_automatica(4, "Laboratorio de sistemas");
 (Id_lugar varchar(60), No_control varchar(50), Id_carrera varchar(50), Nombre varchar(50), Apellido_paterno varchar(50), Apellido_materno varchar(50))
 call registro_accion_automatica("Laboratorio de sistemas", "13011999", "Ingeniería en sistemas computacionales", "nuevo dato agregado", "", "");
 
+
+-- vistas
+create or replace view conteo_entradas as select count(*) as conteo, id_persona from accesos_p group by id_persona;
+create or replace view personas_view as select Apellido_materno, estudiantes_p.Id_persona, (select conteo from conteo_entradas where conteo_entradas.Id_persona=estudiantes_p.id_persona) as Entradas, estudiantes_p.Id_carrera, estudiantes_p.No_control, personas_p.Nombre,personas_p.Apellido_paterno, ( if((select count(*) from accesos_p WHERE accesos_p.Id_persona=estudiantes_p.Id_persona) >0,                                                                                                                                         
+        if((select if(Hora_entrada is not null and Hora_salida is null, true, false) from accesos_p WHERE accesos_p.Id_persona=estudiantes_p.Id_persona and fecha=curdate() order by hora_entrada DESC limit 1), "Activo",
+(select concat("Última vez: ", fecha," ", if(hora_salida=null, date_format(hora_entrada, "%r"), date_format(hora_salida, "%r"))) from accesos_p WHERE accesos_p.Id_persona=estudiantes_p.Id_persona ORDER by fecha desc, hora_entrada desc LIMIT 1)) , "Sin entradas") ) as Valor from estudiantes_p inner JOIN personas_p USING(Id_persona);
