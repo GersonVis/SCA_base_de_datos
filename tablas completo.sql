@@ -60,14 +60,14 @@ delimiter ;
 
 
 delimiter //
-create or replace procedure registro(Id_lugar varchar(30), No_control bigint)
+create or replace procedure registro(Id_lugar varchar(60), No_control bigint)
 begin
     select id_persona from estudiantes_p where estudiantes_p.No_control=No_control limit 1 into @Id_persona;
-    if (select count(*) from accesos_p where Hora_salida is null and Id_persona=@Id_persona and Fecha=curdate() limit 1)<>0 then
-        select "debes registrar salida primero" as mensaje, "false" as solicitud;
+    if (select count(*) from accesos_p where Hora_salida is null and Id_persona=@Id_persona and Fecha=curdate() limit 1)<>0 then 
+        call mensaje_api("debes registrar salida primero", "false", "update");
     else
         insert into accesos_p(Id_lugar, Id_persona) values(Id_lugar, @Id_persona);
-        select "registro correcto" as mensaje, "true" as solicitud;
+        call mensaje_api("registro correcto", "true", "update");
         select * from estudiantes_p inner join personas_p using(Id_persona) where estudiantes_p.No_control=No_control;
     end if;
 end //
@@ -76,7 +76,7 @@ delimiter ;
 
 -- crea un estudiante si no existe
 delimiter //
-create or replace procedure registrar_entrada(Id_lugar varchar(60), No_control varchar(50), Id_carrera varchar(50), Nombre varchar(50), Apellido_paterno varchar(50), Apellido_materno varchar(50))
+create or replace procedure registrar_entrada(Id_lugar varchar(80), No_control varchar(80), Id_carrera varchar(80), Nombre varchar(80), Apellido_paterno varchar(80), Apellido_materno varchar(50))
 begin
    if (select count(*) from estudiantes_p where estudiantes_p.No_control=No_control)=0 then
         call crear_estudiante(No_control, Id_carrera, Nombre, Apellido_paterno, Apellido_materno);
@@ -268,3 +268,5 @@ create or replace view conteo_entradas as select count(*) as conteo, id_persona 
 create or replace view personas_view as select Apellido_materno, estudiantes_p.Id_persona, (select conteo from conteo_entradas where conteo_entradas.Id_persona=estudiantes_p.id_persona) as Entradas, estudiantes_p.Id_carrera, estudiantes_p.No_control, personas_p.Nombre,personas_p.Apellido_paterno, ( if((select count(*) from accesos_p WHERE accesos_p.Id_persona=estudiantes_p.Id_persona) >0,                                                                                                                                         
         if((select if(Hora_entrada is not null and Hora_salida is null, true, false) from accesos_p WHERE accesos_p.Id_persona=estudiantes_p.Id_persona and fecha=curdate() order by hora_entrada DESC limit 1), "Activo",
 (select concat("Última vez: ", fecha," ", if(hora_salida=null, date_format(hora_entrada, "%r"), date_format(hora_salida, "%r"))) from accesos_p WHERE accesos_p.Id_persona=estudiantes_p.Id_persona ORDER by fecha desc, hora_entrada desc LIMIT 1)) , "Sin entradas") ) as Valor from estudiantes_p inner JOIN personas_p USING(Id_persona);
+
+create or replace view  accesos_completo as select * from accesos_p inner join personas_p using(id_persona) inner join estudiantes_p using(id_persona);
